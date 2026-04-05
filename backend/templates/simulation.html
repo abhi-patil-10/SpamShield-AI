@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heart Disease Simulation</title>
+</head>
+<body>
+    <h1>Heart Disease Simulation</h1>
+    <p>Welcome to the Heart Disease Simulation</p>
+        <form action="/simulation" method="post">
+            <input name="updated_data" type="text" placeholder="Enter updated data">
+
+            <input type="submit" value="Simulate">
+
+    <div>Current Risk: {{ current_risk*100 }}%</div>
+    <div>New Risk: {{ new_risk*100 }}%</div> 
+    <div>Health Score Before: {{ health_score_before }}</div>
+    <div>Health Score After: {{ health_score_after }}</div>
+    <div>Improvement: {{ improvement*100 }}%</div>
+</body>
+</html>
