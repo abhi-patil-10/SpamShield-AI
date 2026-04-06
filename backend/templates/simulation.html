@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!-- <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -13,10 +13,29 @@
 
             <input type="submit" value="Simulate">
 
-    <div>Current Risk: {{ current_risk*100 }}%</div>
-    <div>New Risk: {{ new_risk*100 }}%</div> 
-    <div>Health Score Before: {{ health_score_before }}</div>
-    <div>Health Score After: {{ health_score_after }}</div>
-    <div>Improvement: {{ improvement*100 }}%</div>
+    <div>Current Risk: {{ current_risk*100 | round(2) }}%</div>
+    <div>New Risk: {{ new_risk*100 | round(2) }}%</div> 
+    <div>Health Score Before: {{ health_score_before | round(2) }}</div>
+    <div>Health Score After: {{ health_score_after | round(2) }}</div>
+    <div>Improvement: {{ improvement*100 | round(2) }}%</div>
 </body>
-</html>
+</html> -->
+
+{% extends 'base.html' %}
+
+{% block title %}
+    Simulation Page
+{% endblock %}
+
+{% block content %}
+    <form action="/simulation" method="post">
+            <input name="updated_data" type="text" placeholder="Enter updated data">
+
+            <input type="submit" value="Simulate">
+
+    <div>Current Risk: {{ current_risk*100 | round(2) }}%</div>
+    <div>New Risk: {{ new_risk*100 | round(2) }}%</div> 
+    <div>Health Score Before: {{ health_score_before | round(2) }}</div>
+    <div>Health Score After: {{ health_score_after | round(2) }}</div>
+    <div>Improvement: {{ improvement*100 | round(2) }}%</div>
+{% endblock %}

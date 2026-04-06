@@ -11,7 +11,7 @@ with open("C:\\Users\\Prime\\Desktop\\Digital_twin_health_system\\models\\model.
 @app.route("/" , methods=["GET","POST"])
 def home():
     
-    return render_template("index.html")
+    return render_template("base.html")
 
 @app.route("/predict" , methods=["GET","POST"])
 def predict():
