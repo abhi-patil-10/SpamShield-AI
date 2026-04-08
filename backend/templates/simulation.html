@@ -1,41 +1,558 @@
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Heart Disease Simulation</title>
-</head>
-<body>
-    <h1>Heart Disease Simulation</h1>
-    <p>Welcome to the Heart Disease Simulation</p>
-        <form action="/simulation" method="post">
-            <input name="updated_data" type="text" placeholder="Enter updated data">
-
-            <input type="submit" value="Simulate">
-
-    <div>Current Risk: {{ current_risk*100 | round(2) }}%</div>
-    <div>New Risk: {{ new_risk*100 | round(2) }}%</div> 
-    <div>Health Score Before: {{ health_score_before | round(2) }}</div>
-    <div>Health Score After: {{ health_score_after | round(2) }}</div>
-    <div>Improvement: {{ improvement*100 | round(2) }}%</div>
-</body>
-</html> -->
-
 {% extends 'base.html' %}
+{% block nav_simulation %}active{% endblock %}
 
-{% block title %}
-    Simulation Page
+{% block extra_head %}
+<style>
+  /* ── Simulation-page specific styles ──────────────────── */
+
+  /* ── Before/After cards ────────────────────────────────── */
+  .ba-card {
+    padding: 1.75rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .ba-card::after {
+    content: '';
+    position: absolute; inset: 0;
+    border-radius: var(--radius);
+    pointer-events: none;
+  }
+
+  .ba-card.before::after {
+    background: radial-gradient(ellipse 80% 80% at 100% 0%, rgba(220,53,69,0.12) 0%, transparent 70%);
+  }
+
+  .ba-card.after::after {
+    background: radial-gradient(ellipse 80% 80% at 0% 100%, rgba(25,135,84,0.12) 0%, transparent 70%);
+  }
+
+  .ba-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  .ba-label {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 5px 14px;
+    border-radius: 50px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .ba-label.before { background: rgba(220,53,69,0.15);  color: #f87171; border: 1px solid rgba(220,53,69,0.3); }
+  .ba-label.after  { background: rgba(25,135,84,0.15);  color: #4ade80; border: 1px solid rgba(25,135,84,0.3); }
+
+  .ba-big-val {
+    font-family: var(--font-display);
+    font-size: 3.5rem;
+    font-weight: 800;
+    line-height: 1;
+    margin-bottom: 0.25rem;
+  }
+
+  .ba-big-val.danger  { color: #f87171; }
+  .ba-big-val.success { color: #4ade80; }
+
+  .ba-meta {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+  }
+
+  /* ── mini stat row inside ba-card ──────────────────────── */
+  .mini-stats {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--border);
+  }
+
+  .mini-stat {
+    flex: 1; min-width: 80px;
+    background: rgba(255,255,255,0.04);
+    border-radius: var(--radius-sm);
+    padding: 0.9rem 0.85rem;
+    text-align: center;
+  }
+
+  .mini-stat .mv {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .mini-stat .ml {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: 3px;
+  }
+
+  /* ── Improvement hero ──────────────────────────────────── */
+  .improvement-hero {
+    padding: 2.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .improvement-hero::before {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 300px; height: 300px;
+    transform: translate(-50%, -50%);
+    background: radial-gradient(circle, rgba(25,135,84,0.15) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .improvement-hero .icon-wrap {
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(25,135,84,0.3), rgba(8,145,178,0.3));
+    border: 1px solid rgba(25,135,84,0.4);
+    display: flex; align-items: center; justify-content: center;
+    margin: 0 auto 1.25rem;
+    box-shadow: 0 0 30px rgba(25,135,84,0.3);
+  }
+
+  .improvement-hero .icon-wrap i {
+    font-size: 28px;
+    color: #4ade80;
+  }
+
+  .improvement-hero .big-pct {
+    font-family: var(--font-display);
+    font-size: 4.5rem;
+    font-weight: 800;
+    line-height: 1;
+    background: linear-gradient(135deg, #4ade80, #0891b2);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.3rem;
+  }
+
+  .improvement-hero .desc {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    max-width: 260px;
+    margin: 0 auto;
+    line-height: 1.65;
+  }
+
+  /* ── Gauge ─────────────────────────────────────────────── */
+  .gauge-card {
+    padding: 1.75rem;
+  }
+
+  .gauge-card h6 {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── Compare section ───────────────────────────────────── */
+  .compare-card {
+    padding: 2rem;
+  }
+
+  .compare-card h6 {
+    font-family: var(--font-display);
+    font-size: 0.85rem;
+    font-weight: 700;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 1.5rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  .compare-row {
+    display: flex; align-items: center; gap: 14px;
+    margin-bottom: 1.25rem;
+  }
+
+  .compare-row .cr-label {
+    width: 110px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    flex-shrink: 0;
+  }
+
+  .compare-row .cr-bars {
+    flex: 1;
+    display: flex; flex-direction: column; gap: 5px;
+  }
+
+  .compare-row .cr-val {
+    width: 46px;
+    text-align: right;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  /* ── Arrow transition ──────────────────────────────────── */
+  .arrow-transition {
+    display: flex; align-items: center; justify-content: center;
+    gap: 1rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+  }
+
+  .arrow-val {
+    display: flex; flex-direction: column;
+    align-items: center;
+    padding: 0.75rem 1.25rem;
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    min-width: 90px;
+    text-align: center;
+  }
+
+  .arrow-val .av { font-family: var(--font-display); font-size: 1.6rem; font-weight: 800; }
+  .arrow-val .al { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; margin-top: 3px; }
+
+  .arrow-icon {
+    font-size: 1.5rem;
+    color: var(--success-light);
+    animation: bounceRight 1.5s ease-in-out infinite;
+  }
+
+  @keyframes bounceRight {
+    0%, 100% { transform: translateX(0); }
+    50%       { transform: translateX(6px); }
+  }
+</style>
 {% endblock %}
-<!-- This is Actual content of the simulation.html --> 
+
 {% block content %}
-    <form action="/simulation" method="post">
-            <input name="updated_data" type="text" placeholder="Enter updated data">
 
-            <input type="submit" value="Simulate">
+<!-- ── Page header ─────────────────────────────────────── -->
+<div class="page-header fade-up">
+  <div class="badge-tag">
+    <i class="fa-solid fa-circle-dot fa-xs"></i> Lifestyle Simulation
+  </div>
+  <h1>Health Impact Simulator</h1>
+  <p>Compare baseline and simulated cardiac outcomes after lifestyle interventions using your digital twin model.</p>
+</div>
 
-    <div>Current Risk: {{ current_risk*100 | round(2) }}%</div>
-    <div>New Risk: {{ new_risk*100 | round(2) }}%</div> 
-    <div>Health Score Before: {{ health_score_before | round(2) }}</div>
-    <div>Health Score After: {{ health_score_after | round(2) }}</div>
-    <div>Improvement: {{ improvement*100 | round(2) }}%</div>
+{% if current_risk is not none %}
+
+<!-- ── Top: Before / After / Improvement ─────────────── -->
+<div class="row g-4 mb-4">
+
+  <!-- BEFORE card -->
+  <div class="col-lg-4 fade-up delay-1">
+    <div class="glass-card ba-card before h-100">
+      <div class="ba-header">
+        <span class="ba-label before"><i class="fa-solid fa-clock-rotate-left"></i> Before</span>
+        <i class="fa-solid fa-heart-crack" style="color:rgba(220,53,69,0.5);font-size:1.3rem;"></i>
+      </div>
+
+      <div class="ba-big-val danger">{{ current_risk }}%</div>
+      <div class="ba-meta">Cardiac Risk · Baseline</div>
+
+      <div class="compare-bar-wrap">
+        <div class="compare-bar-label"><span>Risk level</span><span>{{ current_risk }}%</span></div>
+        <div class="compare-bar-track">
+          <div class="compare-bar-fill" id="beforeRiskBar"
+            style="background: linear-gradient(90deg, #dc3545, #f87171); width: 0%"></div>
+        </div>
+      </div>
+
+      <div class="mini-stats mt-3">
+        <div class="mini-stat">
+          <div class="mv" style="color:#f87171;">{{ current_risk }}%</div>
+          <div class="ml">Risk</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mv">{{ health_score_before }}</div>
+          <div class="ml">Wellness</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- IMPROVEMENT hero -->
+  <div class="col-lg-4 fade-up delay-2">
+    <div class="glass-card improvement-hero h-100">
+      <div class="icon-wrap">
+        <i class="fa-solid fa-arrow-trend-up"></i>
+      </div>
+      <div class="big-pct" id="impPct">+{{ improvement }}%</div>
+      <div style="font-size:0.78rem;font-weight:700;letter-spacing:0.1em;text-transform:uppercase;color:#4ade80;margin-bottom:0.5rem;">Improvement</div>
+      <div class="desc">Predicted reduction in cardiovascular risk after implementing lifestyle changes.</div>
+
+      <!-- Arrow visual -->
+      <div class="arrow-transition mt-3">
+        <div class="arrow-val">
+          <div class="av" style="color:#f87171;">{{ current_risk }}%</div>
+          <div class="al">Was</div>
+        </div>
+        <div class="arrow-icon"><i class="fa-solid fa-arrow-right"></i></div>
+        <div class="arrow-val">
+          <div class="av" style="color:#4ade80;">{{ new_risk }}%</div>
+          <div class="al">Now</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AFTER card -->
+  <div class="col-lg-4 fade-up delay-3">
+    <div class="glass-card ba-card after h-100">
+      <div class="ba-header">
+        <span class="ba-label after"><i class="fa-solid fa-check-circle"></i> After</span>
+        <i class="fa-solid fa-shield-heart" style="color:rgba(25,135,84,0.5);font-size:1.3rem;"></i>
+      </div>
+
+      <div class="ba-big-val success">{{ new_risk }}%</div>
+      <div class="ba-meta">Cardiac Risk · Simulated</div>
+
+      <div class="compare-bar-wrap">
+        <div class="compare-bar-label"><span>Risk level</span><span>{{ new_risk }}%</span></div>
+        <div class="compare-bar-track">
+          <div class="compare-bar-fill" id="afterRiskBar"
+            style="background: linear-gradient(90deg, #198754, #4ade80); width: 0%"></div>
+        </div>
+      </div>
+
+      <div class="mini-stats mt-3">
+        <div class="mini-stat">
+          <div class="mv" style="color:#4ade80;">{{ new_risk }}%</div>
+          <div class="ml">Risk</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mv">{{ health_score_after }}</div>
+          <div class="ml">Wellness</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Charts row ─────────────────────────────────────── -->
+<div class="row g-4 fade-up delay-4">
+
+  <!-- Comparison chart -->
+  <div class="col-lg-7">
+    <div class="glass-card compare-card">
+      <h6><i class="fa-solid fa-chart-column"></i> Before vs After Comparison</h6>
+      <canvas id="compareChart" height="220"></canvas>
+    </div>
+  </div>
+
+  <!-- Breakdown bars -->
+  <div class="col-lg-5">
+    <div class="glass-card compare-card h-100">
+      <h6><i class="fa-solid fa-sliders"></i> Risk & Wellness Breakdown</h6>
+
+      <!-- Risk comparison -->
+      <div class="compare-row">
+        <div class="cr-label">Heart Risk</div>
+        <div class="cr-bars">
+          <div class="compare-bar-wrap mb-0">
+            <div class="compare-bar-label" style="margin-bottom:3px;">
+              <span style="color:#f87171;">Before</span>
+              <span>{{ current_risk }}%</span>
+            </div>
+            <div class="compare-bar-track">
+              <div class="compare-bar-fill" id="cmpBar1"
+                style="background:linear-gradient(90deg,#dc3545,#f87171); width:0%;"></div>
+            </div>
+          </div>
+          <div class="compare-bar-wrap mb-0">
+            <div class="compare-bar-label" style="margin-bottom:3px;">
+              <span style="color:#4ade80;">After</span>
+              <span>{{ new_risk }}%</span>
+            </div>
+            <div class="compare-bar-track">
+              <div class="compare-bar-fill" id="cmpBar2"
+                style="background:linear-gradient(90deg,#198754,#4ade80); width:0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:1rem 0;"></div>
+
+      <!-- Wellness comparison -->
+      <div class="compare-row">
+        <div class="cr-label">Wellness</div>
+        <div class="cr-bars">
+          <div class="compare-bar-wrap mb-0">
+            <div class="compare-bar-label" style="margin-bottom:3px;">
+              <span style="color:#93c5fd;">Before</span>
+              <span>{{ health_score_before }}</span>
+            </div>
+            <div class="compare-bar-track">
+              <div class="compare-bar-fill" id="cmpBar3"
+                style="background:linear-gradient(90deg,#0d6efd,#93c5fd); width:0%;"></div>
+            </div>
+          </div>
+          <div class="compare-bar-wrap mb-0">
+            <div class="compare-bar-label" style="margin-bottom:3px;">
+              <span style="color:#67e8f9;">After</span>
+              <span>{{ health_score_after }}</span>
+            </div>
+            <div class="compare-bar-track">
+              <div class="compare-bar-fill" id="cmpBar4"
+                style="background:linear-gradient(90deg,#0891b2,#67e8f9); width:0%;"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div style="height:1px;background:var(--border);margin:1.25rem 0 1rem;"></div>
+
+      <!-- Summary chips -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <div class="mini-stat" style="background:rgba(25,135,84,0.1);border:1px solid rgba(25,135,84,0.25);">
+          <div class="mv" style="color:#4ade80;font-size:1.5rem;">{{ improvement }}%</div>
+          <div class="ml">Improvement</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mv" style="font-size:1.1rem;color:#f87171;">
+            {{ "%.1f"|format(current_risk|float - new_risk|float) }}%
+          </div>
+          <div class="ml">Risk Drop</div>
+        </div>
+        <div class="mini-stat">
+          <div class="mv" style="font-size:1.1rem;color:#67e8f9;">
+            +{{ "%.1f"|format(health_score_after|float - health_score_before|float) }}
+          </div>
+          <div class="ml">Score Gain</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% else %}
+<!-- ── Empty state ─────────────────────────────────────── -->
+<div class="glass-card d-flex flex-column align-items-center justify-content-center text-center fade-up"
+  style="min-height: 460px; padding: 3rem;">
+  <div style="width:90px;height:90px;border-radius:50%;background:rgba(25,135,84,0.1);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;border:1px dashed rgba(25,135,84,0.3);">
+    <i class="fa-solid fa-flask-vial" style="font-size:2.4rem;color:rgba(25,135,84,0.6);"></i>
+  </div>
+  <h4 style="font-family:var(--font-display);font-weight:700;color:#fff;margin-bottom:0.75rem;">No Simulation Data</h4>
+  <p style="color:var(--text-muted);font-size:0.95rem;max-width:360px;line-height:1.65;">
+    Run a lifestyle simulation to compare your baseline cardiac risk against a healthier scenario. Results will visualize here.
+  </p>
+  <div style="display:flex;gap:24px;margin-top:2rem;flex-wrap:wrap;justify-content:center;">
+    <div class="mini-stat" style="min-width:100px;">
+      <div class="mv" style="color:var(--text-muted);">—</div>
+      <div class="ml">Before</div>
+    </div>
+    <div class="mini-stat" style="min-width:100px;">
+      <div class="mv" style="color:var(--text-muted);">—</div>
+      <div class="ml">After</div>
+    </div>
+    <div class="mini-stat" style="min-width:100px;">
+      <div class="mv" style="color:var(--text-muted);">—</div>
+      <div class="ml">Δ Score</div>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+{% if current_risk is not none %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const cRisk   = parseFloat("{{ current_risk }}");
+  const nRisk   = parseFloat("{{ new_risk }}");
+  const sBefore = parseFloat("{{ health_score_before }}");
+  const sAfter  = parseFloat("{{ health_score_after }}");
+
+  /* ── Animate progress bars ─────────────────────────────── */
+  setTimeout(() => {
+    document.getElementById('beforeRiskBar').style.width = Math.min(cRisk, 100) + '%';
+    document.getElementById('afterRiskBar').style.width  = Math.min(nRisk, 100) + '%';
+
+    const maxScore = Math.max(sBefore, sAfter, 100);
+    document.getElementById('cmpBar1').style.width = Math.min(cRisk, 100) + '%';
+    document.getElementById('cmpBar2').style.width = Math.min(nRisk, 100) + '%';
+    document.getElementById('cmpBar3').style.width = (sBefore / maxScore * 100) + '%';
+    document.getElementById('cmpBar4').style.width = (sAfter  / maxScore * 100) + '%';
+  }, 350);
+
+  /* ── Grouped bar chart ─────────────────────────────────── */
+  const ctx = document.getElementById('compareChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Heart Risk %', 'Health Score'],
+      datasets: [
+        {
+          label: 'Before',
+          data: [cRisk, sBefore],
+          backgroundColor: ['rgba(220,53,69,0.65)', 'rgba(13,110,253,0.6)'],
+          borderColor:      ['#dc3545', '#0d6efd'],
+          borderWidth: 1.5,
+          borderRadius: 8, borderSkipped: false,
+        },
+        {
+          label: 'After',
+          data: [nRisk, sAfter],
+          backgroundColor: ['rgba(25,135,84,0.65)', 'rgba(8,145,178,0.6)'],
+          borderColor:      ['#198754', '#0891b2'],
+          borderWidth: 1.5,
+          borderRadius: 8, borderSkipped: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          labels: {
+            color: 'rgba(200,215,255,0.75)',
+            font: { size: 12, family: 'DM Sans' },
+            boxWidth: 12, boxHeight: 12,
+            borderRadius: 4,
+          }
+        },
+        tooltip: {
+          backgroundColor: 'rgba(5,13,30,0.92)',
+          titleColor: '#fff',
+          bodyColor: 'rgba(200,215,255,0.8)',
+          borderColor: 'rgba(13,110,253,0.4)',
+          borderWidth: 1,
+          padding: 12,
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(200,215,255,0.65)', font: { size: 12 } },
+        },
+        y: {
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: 'rgba(200,215,255,0.65)', font: { size: 12 } },
+          beginAtZero: true,
+        }
+      }
+    }
+  });
+});
+</script>
+{% endif %}
 {% endblock %}

@@ -1,41 +1,508 @@
-<!-- <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title_Heart Disease Prediction</title>
-</head>
-<body>
-    <h1>Heart Disease Prediction</h1>
-    <p>Welcome to the Heart Disease Prediction API</p>
-    <div>{{data}}</div>
-    <form action="/predict" method="post">
-        <input name="data" type="text" placeholder="Enter data">
-        <input type="submit" value="Predict">
-
-    </form>
-    <div>Heart Risk: {{prediction }}%</div>
-    <div>Health score : {{health_score}}</div>
-    <div>{{error}}</div>
-
-   
-</body>
-</html> -->
-
 {% extends 'base.html' %}
+{% block nav_predict %}active{% endblock %}
 
-{% block title %}
-    Predict Page
+{% block extra_head %}
+<style>
+  /* ── Predict-page specific styles ─────────────────────── */
+
+  .input-panel {
+    padding: 2rem;
+  }
+
+  .input-header {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .input-header .icon {
+    width: 44px; height: 44px;
+    border-radius: 10px;
+    background: rgba(13,110,253,0.18);
+    border: 1px solid rgba(13,110,253,0.3);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--primary-light); font-size: 18px;
+  }
+
+  .input-header h5 {
+    font-family: var(--font-display);
+    font-size: 1.1rem; font-weight: 700;
+    color: #fff; margin: 0;
+  }
+
+  .input-header small {
+    display: block;
+    font-size: 0.75rem; color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* ── Code editor look ──────────────────────────────────── */
+  .editor-wrapper {
+    background: rgba(0,5,20,0.7);
+    border: 1px solid rgba(13,110,253,0.2);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+  }
+
+  .editor-topbar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 14px;
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.07);
+  }
+
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .dot.r { background: #f87171; }
+  .dot.y { background: #fbbf24; }
+  .dot.g { background: #4ade80; }
+
+  .editor-lang {
+    margin-left: auto;
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .editor-wrapper textarea {
+    border: none;
+    border-radius: 0;
+    background: transparent;
+  }
+
+  /* ── Results area ──────────────────────────────────────── */
+  #results-section {
+    display: none;
+  }
+
+  #results-section.visible {
+    display: block;
+  }
+
+  /* ── Circular ring ─────────────────────────────────────── */
+  .ring-card {
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    padding: 2rem 1.5rem;
+    text-align: center;
+  }
+
+  .ring-card .card-title {
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.09em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* ── Chart area ────────────────────────────────────────── */
+  .chart-panel {
+    padding: 1.75rem;
+  }
+
+  .chart-panel h6 {
+    font-family: var(--font-display);
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 1.25rem;
+    display: flex; align-items: center; gap: 8px;
+  }
+
+  /* ── Risk level badge ──────────────────────────────────── */
+  .risk-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 4px 14px;
+    border-radius: 50px;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-top: 0.75rem;
+  }
+
+  .risk-badge.low    { background: rgba(25,135,84,0.2);  color: #4ade80; border: 1px solid rgba(25,135,84,0.4);  }
+  .risk-badge.medium { background: rgba(253,126,20,0.2); color: #fb923c; border: 1px solid rgba(253,126,20,0.4); }
+  .risk-badge.high   { background: rgba(220,53,69,0.2);  color: #f87171; border: 1px solid rgba(220,53,69,0.4);  }
+
+  /* ── Health meter ──────────────────────────────────────── */
+  .health-meter {
+    width: 100%; height: 14px;
+    background: rgba(255,255,255,0.07);
+    border-radius: 50px;
+    overflow: hidden;
+    margin-top: 0.75rem;
+  }
+
+  .health-meter-fill {
+    height: 100%;
+    border-radius: 50px;
+    background: linear-gradient(90deg, var(--danger), var(--warning) 50%, var(--success));
+    background-size: 300% 100%;
+    transition: width 1.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* ── Interpretation chip ───────────────────────────────── */
+  .interp-row {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    margin-top: 1.5rem;
+  }
+
+  .interp-chip {
+    flex: 1; min-width: 120px;
+    padding: 0.9rem 1rem;
+    border-radius: var(--radius-sm);
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--border);
+    text-align: center;
+  }
+
+  .interp-chip .ic-val {
+    font-family: var(--font-display);
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .interp-chip .ic-lbl {
+    font-size: 0.7rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    margin-top: 2px;
+  }
+</style>
 {% endblock %}
-<!-- This is Actual content of the predict.html -->
-{% block content %}
-    <!-- <div>{{data}}</div> -->
-    <form action="/predict" method="post">
-        <input name="data" type="text" placeholder="Enter data">
-        <input type="submit" value="Predict">
 
-    </form>
-    <div>Heart Risk: {{prediction | round(2) }}%</div>
-    <div>Health score : {{health_score | round(2) }}</div>
-    <div>{{error}}</div>
+{% block content %}
+
+<!-- ── Page header ─────────────────────────────────────── -->
+<div class="page-header fade-up">
+  <div class="badge-tag">
+    <i class="fa-solid fa-circle-dot fa-xs"></i> Risk Engine
+  </div>
+  <h1>Cardiac Risk Prediction</h1>
+  <p>Submit patient health parameters to compute AI-driven cardiovascular risk scores and clinical insights.</p>
+</div>
+
+<!-- ── Input & results row ────────────────────────────── -->
+<div class="row g-4">
+
+  <!-- LEFT: Input panel -->
+  <div class="col-lg-5 fade-up delay-1">
+    <div class="glass-card input-panel h-100">
+      <div class="input-header">
+        <div class="icon"><i class="fa-solid fa-code"></i></div>
+        <div>
+          <h5>Patient Data Input</h5>
+          <small>JSON payload · Health parameters</small>
+        </div>
+      </div>
+
+      <form method="POST" action="/predict" id="predictForm">
+        <div class="editor-wrapper mb-3">
+          <div class="editor-topbar">
+            <span class="dot r"></span>
+            <span class="dot y"></span>
+            <span class="dot g"></span>
+            <span class="editor-lang">JSON</span>
+          </div>
+          <textarea
+            class="code-area"
+            name="json_input"
+            id="json_input"
+            rows="10"
+            placeholder='{ "age": 55, "sex": 1, "cp": 0, "trestbps": 130, "chol": 250, "fbs": 0, "restecg": 1, "thalach": 150, "exang": 0, "oldpeak": 1.5, "slope": 1, "ca": 1, "thal": 2 }'
+          >{{ request.form.get('json_input', '') }}</textarea>
+        </div>
+
+        <button type="submit" class="btn-dts btn-dts-primary w-100" id="predictBtn" onclick="startLoading()">
+          <span class="btn-spinner" id="btnSpinner"></span>
+          <i class="fa-solid fa-brain" id="btnIcon"></i>
+          <span id="btnText">Predict Risk</span>
+        </button>
+      </form>
+
+      <!-- Error alert -->
+      {% if error %}
+      <div class="alert-dts danger mt-3">
+        <i class="fa-solid fa-circle-exclamation mt-1"></i>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <!-- Quick-fill example -->
+      <!-- <div class="section-divider">
+        <span class="line"></span>
+        <span class="label">Quick Fill</span>
+        <span class="line"></span>
+      </div> -->
+
+      <!-- <button class="btn-dts btn-dts-success w-100" onclick="fillSample()" type="button">
+        <i class="fa-solid fa-vial"></i> Load Sample Patient
+      </button> -->
+    </div>
+  </div>
+
+  <!-- RIGHT: Results -->
+  <div class="col-lg-7 fade-up delay-2">
+    {% if prediction is not none and health_score is not none %}
+    <div id="results-section" class="visible">
+
+      <!-- Stat cards row -->
+      <div class="row g-3 mb-4">
+
+        <!-- Heart Risk card -->
+        <div class="col-sm-6">
+          <div class="glass-card stat-card danger">
+            <div class="stat-icon danger">
+              <i class="fa-solid fa-heart-crack"></i>
+            </div>
+            <div class="stat-label">Heart Risk</div>
+            <div class="stat-value danger" id="riskVal">{{ prediction }}%</div>
+            <div class="stat-sub" id="riskBadgeWrap">
+              <span class="risk-badge" id="riskBadge"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Health Score card -->
+        <div class="col-sm-6">
+          <div class="glass-card stat-card success">
+            <div class="stat-icon success">
+              <i class="fa-solid fa-shield-heart"></i>
+            </div>
+            <div class="stat-label">Health Score</div>
+            <div class="stat-value success" id="scoreVal">{{ health_score }}</div>
+            <div class="stat-sub">
+              Overall wellness index
+            </div>
+            <div class="health-meter mt-2">
+              <div class="health-meter-fill" id="healthBar" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+     
+
+      
+
+    </div>
+
+    {% else %}
+    <!-- Empty state -->
+    <div class="glass-card h-100 d-flex flex-column align-items-center justify-content-center text-center" style="min-height: 380px; padding: 3rem;">
+      <div style="width:80px;height:80px;border-radius:50%;background:rgba(13,110,253,0.12);display:flex;align-items:center;justify-content:center;margin:0 auto 1.5rem;border:1px dashed rgba(13,110,253,0.3);">
+        <i class="fa-solid fa-heartbeat" style="font-size:2rem;color:rgba(13,110,253,0.6);"></i>
+      </div>
+      <p style="color:var(--text-muted);font-size:0.95rem;max-width:280px;line-height:1.6;">
+        Submit patient parameters to see the AI-generated cardiac risk analysis here.
+      </p>
+      <div style="display:flex;gap:16px;margin-top:1.5rem;flex-wrap:wrap;justify-content:center;">
+        <div class="interp-chip" style="min-width:90px;">
+          <div class="ic-val" style="font-size:1rem;color:var(--text-muted);">--</div>
+          <div class="ic-lbl">Heart Risk</div>
+        </div>
+        <div class="interp-chip" style="min-width:90px;">
+          <div class="ic-val" style="font-size:1rem;color:var(--text-muted);">--</div>
+          <div class="ic-lbl">Health Score</div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+/* ───────────────────────────────────────────── */
+/* Sample Fill Function */
+/* ───────────────────────────────────────────── */
+
+function fillSample() {
+  const sample = {
+    age: 55,
+    sex: 1,
+    cp: 0,
+    trestbps: 130,
+    chol: 250,
+    fbs: 0,
+    restecg: 1,
+    thalach: 150,
+    exang: 0,
+    oldpeak: 1.5,
+    slope: 1,
+    ca: 1,
+    thal: 2
+  };
+
+  document.getElementById('json_input').value =
+    JSON.stringify(sample, null, 2);
+}
+
+
+/* ───────────────────────────────────────────── */
+/* Start Loading Animation */
+/* ───────────────────────────────────────────── */
+
+function startLoading() {
+
+  const btn = document.getElementById('predictBtn');
+  const spinner = document.getElementById('btnSpinner');
+  const icon = document.getElementById('btnIcon');
+  const text = document.getElementById('btnText');
+
+  if (spinner) spinner.style.display = 'inline-block';
+  if (icon) icon.style.display = 'none';
+  if (text) text.textContent = 'Analyzing...';
+
+  if (btn) btn.disabled = true;
+
+}
+
+
+/* ───────────────────────────────────────────── */
+/* Main UI Logic */
+/* ───────────────────────────────────────────── */
+
+document.addEventListener('DOMContentLoaded', () => {
+
+  /* Safe value parsing */
+  const risk =
+    parseFloat("{{ prediction or 0 }}");
+    print("Predicton value:", risk);
+    print("{{prediction}}");
+
+  const score =
+    parseFloat("{{ health_score or 0 }}");
+
+
+  /* ───────────────────────────────────────── */
+  /* Risk Badge */
+  /* ───────────────────────────────────────── */
+
+  const badge =
+    document.getElementById('riskBadge');
+
+  if (badge && !isNaN(risk)) {
+
+    if (risk < 30) {
+
+      badge.className = 'risk-badge low';
+      badge.innerHTML = 'Low Risk';
+
+    }
+
+    else if (risk < 60) {
+
+      badge.className = 'risk-badge medium';
+      badge.innerHTML = 'Moderate Risk';
+
+    }
+
+    else {
+
+      badge.className = 'risk-badge high';
+      badge.innerHTML = 'High Risk';
+
+    }
+
+  }
+
+
+  /* ───────────────────────────────────────── */
+  /* Health Score Bar */
+  /* ───────────────────────────────────────── */
+
+  const healthBar =
+    document.getElementById('healthBar');
+
+  if (healthBar && !isNaN(score)) {
+
+    setTimeout(() => {
+
+      healthBar.style.width =
+        Math.min(score, 100) + '%';
+
+    }, 300);
+
+  }
+
+
+  /* ───────────────────────────────────────── */
+  /* SVG Ring (Safe Check) */
+  /* ───────────────────────────────────────── */
+
+  const ringCircle =
+    document.getElementById('ringCircle');
+
+  if (ringCircle && !isNaN(risk)) {
+
+    const circumference = 427;
+
+    const offset =
+      circumference -
+      (risk / 100) * circumference;
+
+    const ringColor =
+      risk < 30
+        ? '#198754'
+        : risk < 60
+        ? '#fd7e14'
+        : '#dc3545';
+
+    ringCircle.style.stroke =
+      ringColor;
+
+    setTimeout(() => {
+
+      ringCircle.style.strokeDashoffset =
+        offset;
+
+    }, 200);
+
+  }
+
+});
+
+
+/* ───────────────────────────────────────────── */
+/* Reset Button After Page Reload */
+/* ───────────────────────────────────────────── */
+
+window.onload = function() {
+
+  const spinner =
+    document.getElementById('btnSpinner');
+
+  const icon =
+    document.getElementById('btnIcon');
+
+  const text =
+    document.getElementById('btnText');
+
+  const btn =
+    document.getElementById('predictBtn');
+
+  if (spinner)
+    spinner.style.display = 'none';
+
+  if (icon)
+    icon.style.display = 'inline';
+
+  if (text)
+    text.textContent = 'Predict Risk';
+
+  if (btn)
+    btn.disabled = false;
+
+};
+
+</script>
 {% endblock %}
