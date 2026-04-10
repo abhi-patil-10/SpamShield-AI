@@ -5,7 +5,7 @@
 <style>
   /* ── Predict-page specific styles ─────────────────────── */
 
-  .input-panel {
+  .input-panel {    
     padding: 2rem;
   }
 
@@ -192,7 +192,7 @@
 <div class="row g-4">
 
   <!-- LEFT: Input panel -->
-  <div class="col-lg-5 fade-up delay-1">
+  <!-- <div class="col-lg-5 fade-up delay-1">
     <div class="glass-card input-panel h-100">
       <div class="input-header">
         <div class="icon"><i class="fa-solid fa-code"></i></div>
@@ -223,8 +223,8 @@
           <span class="btn-spinner" id="btnSpinner"></span>
           <i class="fa-solid fa-brain" id="btnIcon"></i>
           <span id="btnText">Predict Risk</span>
-        </button>
-      </form>
+        </button> -->
+      <!-- </form> -->
 
       <!-- Error alert -->
       {% if error %}
@@ -248,7 +248,7 @@
   </div>
 
   <!-- RIGHT: Results -->
-  <div class="col-lg-7 fade-up delay-2">
+  <div class="col-lg-7 fade-up delay-2" , style="width: 630px">
     {% if prediction is not none and health_score is not none %}
     <div id="results-section" class="visible">
 
@@ -276,7 +276,7 @@
               <i class="fa-solid fa-shield-heart"></i>
             </div>
             <div class="stat-label">Health Score</div>
-            <div class="stat-value success" id="scoreVal">{{ health_score }}</div>
+            <div class="stat-value success" id="scoreVal">{{ health_score | round(2) }}%</div>
             <div class="stat-sub">
               Overall wellness index
             </div>

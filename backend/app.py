@@ -19,7 +19,7 @@ def predict():
     prediction  = 0 
     health_score = 0
     if request.method == "POST":
-        data = request.form.get("data")
+        data = request.form.get("json_input")
         json_data = json.loads(data)
         
          # Convert input to array

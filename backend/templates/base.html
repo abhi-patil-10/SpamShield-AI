@@ -505,8 +505,43 @@
 
   <!-- ── Page content ───────────────────────────────────── -->
   <main class="page-wrapper">
+    {% block content %}{% endblock %}
+
     <div class="dashboard-container">
-      {% block content %}{% endblock %}
+        <div class="col-lg-5 fade-up delay-1" , style="display:flex">
+    <div class="glass-card input-panel h-100", style="margin-right: 30px">
+      <div class="input-header">
+        <div class="icon"><i class="fa-solid fa-code"></i></div>
+        <div>
+          <h5>Patient Data Input</h5>
+          <small>JSON payload · Health parameters</small>
+        </div>
+      </div>
+
+      <form method="POST" action="/predict" id="predictForm">
+        <div class="editor-wrapper mb-3">
+          <div class="editor-topbar">
+            <span class="dot r"></span>
+            <span class="dot y"></span>
+            <span class="dot g"></span>
+            <span class="editor-lang">JSON</span>
+          </div>
+          <textarea
+            class="code-area"
+            name="json_input"
+            id="json_input"
+            rows="10"
+            placeholder='{ "age": 55, "sex": 1, "cp": 0, "trestbps": 130, "chol": 250, "fbs": 0, "restecg": 1, "thalach": 150, "exang": 0, "oldpeak": 1.5, "slope": 1, "ca": 1, "thal": 2 }'
+            
+          >{{ request.form.get('json_input', '') }}</textarea>
+          <input type="submit" value="Predict" class="btn-dts btn-dts-primary w-100 mt-3" id="predictBtn">
+        </div>
+       
+        
+        <!-- <input value="Predict" type="submit" class="btn-dts btn-dts-primary w-100" id="predictBtn" onclick="startLoading()"> -->
+         
+        <!-- </input> -->
+      
     </div>
   </main>
 
