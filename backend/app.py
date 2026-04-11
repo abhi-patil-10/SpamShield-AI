@@ -5,7 +5,7 @@ import json
 
 app = Flask(__name__)
 
-with open("C:\\Users\\Prime\\Desktop\\Digital_twin_health_system\\models\\model.pkl", "rb") as file:
+with open("C:\\Users\\Prime\\Desktop\\TwinPulse-AI\\models\\model.pkl", "rb") as file:
     model = pickle.load(file)
     
 @app.route("/" , methods=["GET","POST"])
